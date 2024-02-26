@@ -1,0 +1,35 @@
+//@version=5
+strategy("SPX Gap and Volume Strategy", overlay=true, pyramiding=0, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+// Define input variables for gap and volume thresholds
+gapThresholdPercent = input.float(0.5, title="Gap Threshold (%)", minval=0)
+volumeThresholdPercent = input.float(0.5, title="Volume Threshold (%)", minval=0)
+
+// Calculate the gap percentage and volume change percentage
+gapPercent = ((open - close[1]) / close[1]) * 100
+volumePercent = ((volume - ta.sma(volume, 5)) / ta.sma(volume, 5)) * 100
+
+// Define conditions for entering long and short positions
+enterLong = ta.crossover(volumePercent, volumeThresholdPercent) and gapPercent > gapThresholdPercent
+enterShort = ta.crossunder(volumePercent, volumeThresholdPercent) and gapPercent < -gapThresholdPercent
+
+// Add buy and sell signals on the chart
+plotshape(series=enterLong, style=shape.triangleup, location=location.belowbar, color=color.green, title="Buy Signal", size=size.small)
+plotshape(series=enterShort, style=shape.triangledown, location=location.abovebar, color=color.red, title="Sell Signal", size=size.small)
+
+// Inputs for stop loss and take profit levels
+stopLossPercent = input.float(1, title="Stop Loss (%)", minval=0)
+takeProfitPercent = input.float(1, title="Take Profit (%)", minval=0)
+
+// Execute the strategy's entry orders
+if (enterLong)
+    strategy.entry("Long", strategy.long)
+    label.new(bar_index, low, "Long Entry", color=color.new(color.green, 0), style=label.style_label_up, size=size.small, textcolor=color.white)
+
+if (enterShort)
+    strategy.entry("Short", strategy.short)
+    label.new(bar_index, high, "Short Entry", color=color.new(color.red, 0), style=label.style_label_down, size=size.small, textcolor=color.white)
+
+// Strategy's exit conditions for long and short positions
+strategy.exit("Exit Long", "Long", stop=close * (1 - stopLossPercent / 100), limit=close * (1 + takeProfitPercent / 100))
+strategy.exit("Exit Short", "Short", stop=close * (1 + stopLossPercent / 100), limit=close * (1 - takeProfitPercent / 100))
